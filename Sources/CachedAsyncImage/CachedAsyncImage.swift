@@ -307,7 +307,7 @@ public struct CachedAsyncImage<Content>: View where Content: View {
     private func load() async {
         do {
             if let urlRequest = urlRequest {
-                if let image = try? cachedImage(from: urlRequest, cache: self.urlCache) {
+                if let image = try? cachedImage(from: urlRequest, cache: urlCache) {
                     // WARNING: This does not behave well when the url is changed with another
                     phase = .success(image)
                     return
