@@ -70,6 +70,8 @@ public struct CachedAsyncImage<Content>: View where Content: View {
     private let urlRequest: URLRequest?
     
     private let urlSession: URLSession
+
+    private let urlCache: URLCache
     
     private let scale: CGFloat
     
@@ -298,24 +300,24 @@ public struct CachedAsyncImage<Content>: View where Content: View {
         configuration.urlCache = urlCache
         self.urlRequest = urlRequest
         self.urlSession =  URLSession(configuration: configuration)
+        self.urlCache = urlCache
         self.scale = scale
         self.transaction = transaction
         self.content = content
         
         self._phase = State(wrappedValue: .empty)
-        do {
-            if let urlRequest = urlRequest, let image = try cachedImage(from: urlRequest, cache: urlCache) {
-                self._phase = State(wrappedValue: .success(image))
-            }
-        } catch {
-            self._phase = State(wrappedValue: .failure(error))
-        }
     }
     
     @Sendable
     private func load() async {
         do {
             if let urlRequest = urlRequest {
+                if let image = try? cachedImage(from: urlRequest, cache: self.urlCache) {
+                    // WARNING: This does not behave well when the url is changed with another
+                    phase = .success(image)
+                    return
+                }
+
                 let (image, metrics) = try await remoteImage(from: urlRequest, session: urlSession)
                 if metrics.transactionMetrics.last?.resourceFetchType == .localCache {
                     // WARNING: This does not behave well when the url is changed with another
