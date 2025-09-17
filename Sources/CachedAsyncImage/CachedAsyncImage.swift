@@ -304,12 +304,14 @@ public struct CachedAsyncImage<Content>: View where Content: View {
     }
     
     @Sendable
-    private func load() async {
+    nonisolated private func load() async {
         do {
             if let urlRequest = urlRequest {
                 if let image = try? cachedImage(from: urlRequest, cache: urlCache) {
                     // WARNING: This does not behave well when the url is changed with another
-                    phase = .success(image)
+                    Task { @MainActor in
+                        phase = .success(image)
+                    }
                     return
                 }
 
@@ -319,20 +321,28 @@ public struct CachedAsyncImage<Content>: View where Content: View {
                 let (image, metrics) = try await remoteImage(from: urlRequest, session: urlSession)
                 if metrics.transactionMetrics.last?.resourceFetchType == .localCache {
                     // WARNING: This does not behave well when the url is changed with another
-                    phase = .success(image)
-                } else {
-                    withAnimation(transaction.animation) {
+                    Task { @MainActor in
                         phase = .success(image)
+                    }
+                } else {
+                    Task { @MainActor in
+                        withAnimation(transaction.animation) {
+                            phase = .success(image)
+                        }
                     }
                 }
             } else {
-                withAnimation(transaction.animation) {
-                    phase = .empty
+                Task { @MainActor in
+                    withAnimation(transaction.animation) {
+                        phase = .empty
+                    }
                 }
             }
         } catch {
-            withAnimation(transaction.animation) {
-                phase = .failure(error)
+            Task { @MainActor in
+                withAnimation(transaction.animation) {
+                    phase = .failure(error)
+                }
             }
         }
     }
@@ -351,7 +361,7 @@ private extension AsyncImage {
 
 @available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
 private extension CachedAsyncImage {
-    private func remoteImage(from request: URLRequest, session: URLSession) async throws -> (Image, URLSessionTaskMetrics) {
+    nonisolated private func remoteImage(from request: URLRequest, session: URLSession) async throws -> (Image, URLSessionTaskMetrics) {
         let (data, _, metrics) = try await session.data(for: request)
         if metrics.redirectCount > 0, let lastResponse = metrics.transactionMetrics.last?.response {
             let requests = metrics.transactionMetrics.map { $0.request }
@@ -362,12 +372,12 @@ private extension CachedAsyncImage {
         return (try image(from: data), metrics)
     }
     
-    private func cachedImage(from request: URLRequest, cache: URLCache) throws -> Image? {
+    nonisolated private func cachedImage(from request: URLRequest, cache: URLCache) throws -> Image? {
         guard let cachedResponse = cache.cachedResponse(for: request) else { return nil }
         return try image(from: cachedResponse.data)
     }
     
-    private func image(from data: Data) throws -> Image {
+    nonisolated private func image(from data: Data) throws -> Image {
 #if os(macOS)
         if let nsImage = NSImage(data: data) {
             return Image(nsImage: nsImage)
