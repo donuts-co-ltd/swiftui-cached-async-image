@@ -308,42 +308,36 @@ public struct CachedAsyncImage<Content>: View where Content: View {
         do {
             if let urlRequest = urlRequest {
                 if let image = try? cachedImage(from: urlRequest, cache: urlCache) {
-                    // WARNING: This does not behave well when the url is changed with another
-                    Task { @MainActor in
-                        phase = .success(image)
-                    }
+                    await updatePhase(.success(image), animated: false)
                     return
                 }
 
                 let configuration = URLSessionConfiguration.default
                 configuration.urlCache = self.urlCache
                 let urlSession = URLSession(configuration: configuration)
+
                 let (image, metrics) = try await remoteImage(from: urlRequest, session: urlSession)
                 if metrics.transactionMetrics.last?.resourceFetchType == .localCache {
                     // WARNING: This does not behave well when the url is changed with another
-                    Task { @MainActor in
-                        phase = .success(image)
-                    }
+                    await updatePhase(.success(image), animated: false)
                 } else {
-                    Task { @MainActor in
-                        withAnimation(transaction.animation) {
-                            phase = .success(image)
-                        }
-                    }
+                    await updatePhase(.success(image))
                 }
             } else {
-                Task { @MainActor in
-                    withAnimation(transaction.animation) {
-                        phase = .empty
-                    }
-                }
+                await updatePhase(.empty)
             }
         } catch {
-            Task { @MainActor in
-                withAnimation(transaction.animation) {
-                    phase = .failure(error)
-                }
+            await updatePhase(.failure(error))
+        }
+    }
+
+    private func updatePhase(_ newPhase: AsyncImagePhase, animated: Bool = true) {
+        if animated {
+            withAnimation(transaction.animation) {
+                phase = newPhase
             }
+        } else {
+            phase = newPhase
         }
     }
 }
