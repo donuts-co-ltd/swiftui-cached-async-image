@@ -68,8 +68,6 @@ public struct CachedAsyncImage<Content>: View where Content: View {
     @State private var phase: AsyncImagePhase
     
     private let urlRequest: URLRequest?
-    
-    private let urlSession: URLSession
 
     private let urlCache: URLCache
     
@@ -296,10 +294,7 @@ public struct CachedAsyncImage<Content>: View where Content: View {
     ///   - content: A closure that takes the load phase as an input, and
     ///     returns the view to display for the specified phase.
     public init(urlRequest: URLRequest?, urlCache: URLCache = .shared, scale: CGFloat = 1, transaction: Transaction = Transaction(), @ViewBuilder content: @escaping (AsyncImagePhase) -> Content) {
-        let configuration = URLSessionConfiguration.default
-        configuration.urlCache = urlCache
         self.urlRequest = urlRequest
-        self.urlSession =  URLSession(configuration: configuration)
         self.urlCache = urlCache
         self.scale = scale
         self.transaction = transaction
@@ -318,6 +313,9 @@ public struct CachedAsyncImage<Content>: View where Content: View {
                     return
                 }
 
+                let configuration = URLSessionConfiguration.default
+                configuration.urlCache = self.urlCache
+                let urlSession = URLSession(configuration: configuration)
                 let (image, metrics) = try await remoteImage(from: urlRequest, session: urlSession)
                 if metrics.transactionMetrics.last?.resourceFetchType == .localCache {
                     // WARNING: This does not behave well when the url is changed with another
