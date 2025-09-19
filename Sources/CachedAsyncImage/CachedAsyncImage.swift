@@ -68,8 +68,8 @@ public struct CachedAsyncImage<Content>: View where Content: View {
     @State private var phase: AsyncImagePhase
     
     private let urlRequest: URLRequest?
-    
-    private let urlSession: URLSession
+
+    private let urlCache: URLCache
     
     private let scale: CGFloat
     
@@ -294,46 +294,50 @@ public struct CachedAsyncImage<Content>: View where Content: View {
     ///   - content: A closure that takes the load phase as an input, and
     ///     returns the view to display for the specified phase.
     public init(urlRequest: URLRequest?, urlCache: URLCache = .shared, scale: CGFloat = 1, transaction: Transaction = Transaction(), @ViewBuilder content: @escaping (AsyncImagePhase) -> Content) {
-        let configuration = URLSessionConfiguration.default
-        configuration.urlCache = urlCache
         self.urlRequest = urlRequest
-        self.urlSession =  URLSession(configuration: configuration)
+        self.urlCache = urlCache
         self.scale = scale
         self.transaction = transaction
         self.content = content
         
         self._phase = State(wrappedValue: .empty)
-        do {
-            if let urlRequest = urlRequest, let image = try cachedImage(from: urlRequest, cache: urlCache) {
-                self._phase = State(wrappedValue: .success(image))
-            }
-        } catch {
-            self._phase = State(wrappedValue: .failure(error))
-        }
     }
     
     @Sendable
-    private func load() async {
+    nonisolated private func load() async {
         do {
             if let urlRequest = urlRequest {
+                if let image = try? cachedImage(from: urlRequest, cache: urlCache) {
+                    await updatePhase(.success(image), animated: false)
+                    return
+                }
+
+                let configuration = URLSessionConfiguration.default
+                configuration.urlCache = self.urlCache
+                let urlSession = URLSession(configuration: configuration)
+
                 let (image, metrics) = try await remoteImage(from: urlRequest, session: urlSession)
                 if metrics.transactionMetrics.last?.resourceFetchType == .localCache {
                     // WARNING: This does not behave well when the url is changed with another
-                    phase = .success(image)
+                    await updatePhase(.success(image), animated: false)
                 } else {
-                    withAnimation(transaction.animation) {
-                        phase = .success(image)
-                    }
+                    await updatePhase(.success(image))
                 }
             } else {
-                withAnimation(transaction.animation) {
-                    phase = .empty
-                }
+                await updatePhase(.empty)
             }
         } catch {
+            await updatePhase(.failure(error))
+        }
+    }
+
+    private func updatePhase(_ newPhase: AsyncImagePhase, animated: Bool = true) {
+        if animated {
             withAnimation(transaction.animation) {
-                phase = .failure(error)
+                phase = newPhase
             }
+        } else {
+            phase = newPhase
         }
     }
 }
@@ -351,7 +355,7 @@ private extension AsyncImage {
 
 @available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
 private extension CachedAsyncImage {
-    private func remoteImage(from request: URLRequest, session: URLSession) async throws -> (Image, URLSessionTaskMetrics) {
+    nonisolated private func remoteImage(from request: URLRequest, session: URLSession) async throws -> (Image, URLSessionTaskMetrics) {
         let (data, _, metrics) = try await session.data(for: request)
         if metrics.redirectCount > 0, let lastResponse = metrics.transactionMetrics.last?.response {
             let requests = metrics.transactionMetrics.map { $0.request }
@@ -362,12 +366,12 @@ private extension CachedAsyncImage {
         return (try image(from: data), metrics)
     }
     
-    private func cachedImage(from request: URLRequest, cache: URLCache) throws -> Image? {
+    nonisolated private func cachedImage(from request: URLRequest, cache: URLCache) throws -> Image? {
         guard let cachedResponse = cache.cachedResponse(for: request) else { return nil }
         return try image(from: cachedResponse.data)
     }
     
-    private func image(from data: Data) throws -> Image {
+    nonisolated private func image(from data: Data) throws -> Image {
 #if os(macOS)
         if let nsImage = NSImage(data: data) {
             return Image(nsImage: nsImage)
