@@ -11,7 +11,7 @@ import SwiftUI
 /// instance to load an image from the specified URL, and then display it.
 /// For example, you can display an icon that's stored on a server:
 ///
-///     CachedAsyncImage(url: URL(string: "https://example.com/icon.png"))
+///     LazyCachedAsyncImage(url: URL(string: "https://example.com/icon.png"))
 ///         .frame(width: 200, height: 200)
 ///
 /// Until the image loads, the view displays a standard placeholder that
@@ -28,7 +28,7 @@ import SwiftUI
 /// also use the `content` parameter to manipulate the loaded image.
 /// For example, you can add a modifier to make the loaded image resizable:
 ///
-///     CachedAsyncImage(url: URL(string: "https://example.com/icon.png")) { image in
+///     LazyCachedAsyncImage(url: URL(string: "https://example.com/icon.png")) { image in
 ///         image.resizable()
 ///     } placeholder: {
 ///         ProgressView()
@@ -42,7 +42,7 @@ import SwiftUI
 /// right, and an arrow pointing from the first to the second.](AsyncImage-2)
 ///
 /// > Important: You can't apply image-specific modifiers, like
-/// ``Image/resizable(capInsets:resizingMode:)``, directly to a `CachedAsyncImage`.
+/// ``Image/resizable(capInsets:resizingMode:)``, directly to a `LazyCachedAsyncImage`.
 /// Instead, apply them to the ``Image`` instance that your `content`
 /// closure gets when defining the view's appearance.
 ///
@@ -52,7 +52,7 @@ import SwiftUI
 /// the state of the loading operation. Return a view that's appropriate
 /// for the current phase:
 ///
-///     CachedAsyncImage(url: URL(string: "https://example.com/icon.png")) { phase in
+///     LazyCachedAsyncImage(url: URL(string: "https://example.com/icon.png")) { phase in
 ///         if let image = phase.image {
 ///             image // Displays the loaded image.
 ///         } else if phase.error != nil {
@@ -63,7 +63,7 @@ import SwiftUI
 ///     }
 ///
 @available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
-public struct CachedAsyncImage<Content>: View where Content: View {
+public struct LazyCachedAsyncImage<Content>: View where Content: View {
     
     @State private var phase: AsyncImagePhase
     
@@ -90,7 +90,7 @@ public struct CachedAsyncImage<Content>: View where Content: View {
     /// continues to display the placeholder. The following example loads
     /// and displays an icon from an example server:
     ///
-    ///     CachedAsyncImage(url: URL(string: "https://example.com/icon.png"))
+    ///     LazyCachedAsyncImage(url: URL(string: "https://example.com/icon.png"))
     ///
     /// If you want to customize the placeholder or apply image-specific
     /// modifiers --- like ``Image/resizable(capInsets:resizingMode:)`` ---
@@ -117,7 +117,7 @@ public struct CachedAsyncImage<Content>: View where Content: View {
     /// continues to display the placeholder. The following example loads
     /// and displays an icon from an example server:
     ///
-    ///     CachedAsyncImage(url: URL(string: "https://example.com/icon.png"))
+    ///     LazyCachedAsyncImage(url: URL(string: "https://example.com/icon.png"))
     ///
     /// If you want to customize the placeholder or apply image-specific
     /// modifiers --- like ``Image/resizable(capInsets:resizingMode:)`` ---
@@ -150,7 +150,7 @@ public struct CachedAsyncImage<Content>: View where Content: View {
     /// create using the loaded image. For example, you can show a green
     /// placeholder, followed by a tiled version of the loaded image:
     ///
-    ///     CachedAsyncImage(url: URL(string: "https://example.com/icon.png")) { image in
+    ///     LazyCachedAsyncImage(url: URL(string: "https://example.com/icon.png")) { image in
     ///         image.resizable(resizingMode: .tile)
     ///     } placeholder: {
     ///         Color.green
@@ -186,7 +186,7 @@ public struct CachedAsyncImage<Content>: View where Content: View {
     /// create using the loaded image. For example, you can show a green
     /// placeholder, followed by a tiled version of the loaded image:
     ///
-    ///     CachedAsyncImage(url: URL(string: "https://example.com/icon.png")) { image in
+    ///     LazyCachedAsyncImage(url: URL(string: "https://example.com/icon.png")) { image in
     ///         image.resizable(resizingMode: .tile)
     ///     } placeholder: {
     ///         Color.green
@@ -230,7 +230,7 @@ public struct CachedAsyncImage<Content>: View where Content: View {
     /// contains the loaded image. Use the phase to drive the output of the
     /// `content` closure, which defines the view's appearance:
     ///
-    ///     CachedAsyncImage(url: URL(string: "https://example.com/icon.png")) { phase in
+    ///     LazyCachedAsyncImage(url: URL(string: "https://example.com/icon.png")) { phase in
     ///         if let image = phase.image {
     ///             image // Displays the loaded image.
     ///         } else if phase.error != nil {
@@ -241,7 +241,7 @@ public struct CachedAsyncImage<Content>: View where Content: View {
     ///     }
     ///
     /// To add transitions when you change the URL, apply an identifier to the
-    /// ``CachedAsyncImage``.
+    /// ``LazyCachedAsyncImage``.
     ///
     /// - Parameters:
     ///   - url: The URL of the image to display.
@@ -270,7 +270,7 @@ public struct CachedAsyncImage<Content>: View where Content: View {
     /// contains the loaded image. Use the phase to drive the output of the
     /// `content` closure, which defines the view's appearance:
     ///
-    ///     CachedAsyncImage(url: URL(string: "https://example.com/icon.png")) { phase in
+    ///     LazyCachedAsyncImage(url: URL(string: "https://example.com/icon.png")) { phase in
     ///         if let image = phase.image {
     ///             image // Displays the loaded image.
     ///         } else if phase.error != nil {
@@ -281,7 +281,7 @@ public struct CachedAsyncImage<Content>: View where Content: View {
     ///     }
     ///
     /// To add transitions when you change the URL, apply an identifier to the
-    /// ``CachedAsyncImage``.
+    /// ``LazyCachedAsyncImage``.
     ///
     /// - Parameters:
     ///   - urlRequest: The URL request of the image to display.
@@ -301,20 +301,17 @@ public struct CachedAsyncImage<Content>: View where Content: View {
         self.content = content
         
         self._phase = State(wrappedValue: .empty)
-        
-        do {
-            if let urlRequest = urlRequest, let image = try cachedImage(from: urlRequest, cache: urlCache) {
-                self._phase = State(wrappedValue: .success(image))
-            }
-        } catch {
-            self._phase = State(wrappedValue: .failure(error))
-        }
     }
     
     @Sendable
     nonisolated private func load() async {
         do {
             if let urlRequest = urlRequest {
+                if let image = try? cachedImage(from: urlRequest, cache: urlCache) {
+                    await updatePhase(.success(image), animated: false)
+                    return
+                }
+
                 let configuration = URLSessionConfiguration.default
                 configuration.urlCache = self.urlCache
                 let urlSession = URLSession(configuration: configuration)
@@ -348,7 +345,7 @@ public struct CachedAsyncImage<Content>: View where Content: View {
 // MARK: - Helpers
 
 @available(iOS 15.0, macOS 12.0, tvOS 15.0, watchOS 8.0, *)
-private extension CachedAsyncImage {
+private extension LazyCachedAsyncImage {
     nonisolated private func remoteImage(from request: URLRequest, session: URLSession) async throws -> (Image, URLSessionTaskMetrics) {
         let (data, _, metrics) = try await session.data(for: request)
         if metrics.redirectCount > 0, let lastResponse = metrics.transactionMetrics.last?.response {
